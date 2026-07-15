@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransactOS | Distributed Transaction Infrastructure</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script defer src="app.js"></script>
+</head>
+
+<body>
+
+<div id="loading-screen">
+
+    <div class="loader-card">
+
+        <div class="logo-circle">
+            T
+        </div>
+
+        <h1>TransactOS</h1>
+
+        <p>Distributed Transaction Infrastructure</p>
+
+        <div class="loading-list">
+
+            <span>Initializing PostgreSQL...</span>
+
+            <span>Loading Ledger Engine...</span>
+
+            <span>Verifying Idempotency...</span>
+
+            <span>Starting Services...</span>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="app">
+
+<!-- ================= NAVBAR ================= -->
+
+<header class="navbar">
+
+    <div class="logo">
+
+        <div class="logo-icon">
+            T
+        </div>
+
+        <div>
+
+            <h2>TransactOS</h2>
+
+            <small>Distributed Transaction Infrastructure</small>
+
+        </div>
+
+    </div>
+
+    <nav>
+
+        <a href="#">Dashboard</a>
+
+        <a href="#">Ledger</a>
+
+        <a href="#">Transactions</a>
+
+        <a href="#">API</a>
+
+    </nav>
+
+</header>
+
+<!-- ================= HERO ================= -->
+
+<section class="hero">
+
+    <div>
+
+        <h1>
+
+            Reliable Payments.
+
+            <br>
+
+            Consistent Ledger.
+
+        </h1>
+
+        <p>
+
+            Backend-first payment infrastructure demonstrating
+            ACID transactions,
+            row-level locking,
+            idempotency,
+            and concurrent request handling.
+
+        </p>
+
+    </div>
+
+</section>
+
+<!-- ================= STATS ================= -->
+
+<section class="stats-grid">
+
+    <div class="stat-card">
+
+        <span>Total Accounts</span>
+
+        <h2 id="accountsCount">
+            --
+        </h2>
+
+    </div>
+
+    <div class="stat-card">
+
+        <span>Total Transactions</span>
+
+        <h2 id="transactionCount">
+            --
+        </h2>
+
+    </div>
+
+    <div class="stat-card">
+
+        <span>Money Processed</span>
+
+        <h2 id="moneyProcessed">
+            ₹0
+        </h2>
+
+    </div>
+
+    <div class="stat-card">
+
+        <span>Duplicate Requests</span>
+
+        <h2 id="duplicateCount">
+            0
+        </h2>
+
+    </div>
+
+</section>
+
+<!-- ================= MAIN GRID ================= -->
+
+<section class="dashboard-grid">
+
+<!-- LEFT COLUMN -->
+
+<div class="left-column">
+
+<!-- ================= SYSTEM HEALTH ================= -->
+
+<div class="panel">
+
+    <div class="panel-title">
+
+        System Health
+
+    </div>
+
+    <div class="health-grid">
+
+        <div class="health-item">
+
+            <span class="dot online"></span>
+
+            PostgreSQL
+
+        </div>
+
+        <div class="health-item">
+
+            <span class="dot online"></span>
+
+            Ledger Engine
+
+        </div>
+
+        <div class="health-item">
+
+            <span class="dot online"></span>
+
+            API Online
+
+        </div>
+
+        <div class="health-item">
+
+            <span class="dot online"></span>
+
+            Row Locking
+
+        </div>
+
+        <div class="health-item">
+
+            <span class="dot online"></span>
+
+            Idempotency
+
+        </div>
+
+        <div class="health-item">
+
+            <span class="dot online"></span>
+
+            Transaction Manager
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ================= ACCOUNT CARDS ================= -->
+
+<div class="panel">
+
+    <div class="panel-header">
+
+        <h2>Accounts</h2>
+
+        <button id="refreshBtn">
+
+            Refresh
+
+        </button>
+
+    </div>
+
+    <div id="accountsContainer" class="accounts-grid">
+
+        <!-- app.js injects cards -->
+
+    </div>
+
+</div>
+
+</div>
+
+<!-- RIGHT COLUMN -->
+
+<div class="right-column">
+
+<div class="panel">
+
+    <div class="panel-header">
+
+        <h2>Live Ledger Feed</h2>
+
+    </div>
+
+    <div id="ledgerFeed" class="ledger-feed">
+
+        <!-- Live Transactions -->
+
+    </div>
+
+</div>
+
+</div>
+
+</section>
+<!-- ================= TRANSFER + STRESS TEST ================= -->
+
+<section class="bottom-grid">
+
+    <!-- Transfer Panel -->
+
+    <div class="panel">
+
+        <div class="panel-header">
+            <h2>Transfer Funds</h2>
+        </div>
+
+        <form id="transferForm">
+
+            <div class="form-group">
+                <label>From Account</label>
+
+                <select id="fromAccount" required>
+
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>To Account</label>
+
+                <select id="toAccount" required>
+
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Amount (₹)</label>
+
+                <input
+                    type="number"
+                    id="amount"
+                    min="1"
+                    placeholder="500"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+
+                <label>Reference ID</label>
+
+                <input
+                    type="text"
+                    id="reference"
+                    placeholder="Auto generated if empty"
+                >
+
+            </div>
+
+            <button
+                type="submit"
+                class="primary-btn"
+            >
+                Initiate Transfer
+            </button>
+
+        </form>
+
+    </div>
+
+    <!-- Deposit / Withdraw Panel -->
+
+    <div class="panel">
+
+        <div class="panel-header">
+            <h2>Deposit / Withdraw</h2>
+        </div>
+
+        <form id="depositForm">
+
+            <div class="form-group">
+                <label>Account</label>
+
+                <select id="depositAccount" required>
+
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Amount (₹)</label>
+
+                <input
+                    type="number"
+                    id="depositAmount"
+                    min="1"
+                    placeholder="500"
+                    required
+                >
+            </div>
+
+            <button
+                type="submit"
+                class="primary-btn"
+            >
+                Deposit
+            </button>
+
+        </form>
+
+        <form id="withdrawForm" style="margin-top: 16px;">
+
+            <div class="form-group">
+                <label>Account</label>
+
+                <select id="withdrawAccount" required>
+
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Amount (₹)</label>
+
+                <input
+                    type="number"
+                    id="withdrawAmount"
+                    min="1"
+                    placeholder="500"
+                    required
+                >
+            </div>
+
+            <button
+                type="submit"
+                class="danger-btn"
+            >
+                Withdraw
+            </button>
+
+        </form>
+
+    </div>
+
+    <!-- Stress Test -->
+
+    <div class="panel">
+
+        <div class="panel-header">
+
+            <h2>Concurrency Stress Test</h2>
+
+        </div>
+
+        <p class="panel-description">
+
+            Fire multiple simultaneous requests to verify row-level locking,
+            idempotency and transaction consistency.
+
+        </p>
+
+        <button
+            id="stressBtn"
+            class="danger-btn"
+        >
+
+            Fire 20 Concurrent Requests
+
+        </button>
+
+        <div
+            id="stressProgress"
+            class="progress-wrapper"
+        >
+
+            <div id="progressBar"></div>
+
+        </div>
+
+        <div
+            id="stressConsole"
+            class="console-window"
+        >
+
+            <div class="console-line">
+
+                Waiting for execution...
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- ================= TRANSACTIONS ================= -->
+
+<section class="panel">
+
+    <div class="panel-header">
+
+        <h2>Recent Transactions</h2>
+
+    </div>
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>ID</th>
+
+                    <th>Sender</th>
+
+                    <th>Receiver</th>
+
+                    <th>Amount</th>
+
+                    <th>Status</th>
+
+                    <th>Time</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="transactionsTable">
+
+                <!-- JS Injects -->
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+<!-- ================= TOAST ================= -->
+
+<div id="toastContainer">
+
+</div>
+
+<!-- ================= SUCCESS MODAL ================= -->
+
+<div id="successModal" class="modal">
+
+    <div class="modal-content">
+
+        <div class="success-icon">
+
+            ✓
+
+        </div>
+
+        <h2>
+
+            Transfer Successful
+
+        </h2>
+
+        <p id="successMessage">
+
+            Payment completed successfully.
+
+        </p>
+
+        <button id="closeModal">
+
+            Close
+
+        </button>
+
+    </div>
+
+</div>
+
+<!-- ================= FOOTER ================= -->
+
+<footer>
+
+    <div class="footer-left">
+
+        <h3>
+
+            TransactOS
+
+        </h3>
+
+        <p>
+
+            Distributed Transaction Infrastructure
+
+        </p>
+
+    </div>
+
+    <div class="footer-right">
+
+        <span>
+
+            PostgreSQL
+
+        </span>
+
+        <span>
+
+            Ledger
+
+        </span>
+
+        <span>
+
+            ACID
+
+        </span>
+
+        <span>
+
+            Idempotency
+
+        </span>
+
+        <span>
+
+            Row Locking
+
+        </span>
+
+    </div>
+
+</footer>
+
+</div>
+
+</body>
+
+</html>
