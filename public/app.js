@@ -1,6 +1,6 @@
 // ======================================
 // TRANSACTOS
-// app.js (Part 1)
+// app.js
 // ======================================
 
 const API = "";
@@ -12,8 +12,6 @@ const ledgerFeed = document.getElementById("ledgerFeed");
 
 const fromAccount = document.getElementById("fromAccount");
 const toAccount = document.getElementById("toAccount");
-console.log(fromAccount);
-console.log(toAccount);
 
 const refreshBtn = document.getElementById("refreshBtn");
 
@@ -55,6 +53,7 @@ async function loadAccounts(){
         renderAccounts();
 
         populateDropdowns();
+
         populateDepositWithdrawDropdowns();
 
         updateStats();
@@ -122,7 +121,7 @@ function renderAccounts(){
 }
 
 // ======================================
-// DROPDOWNS
+// DROPDOWNS (Transfer form)
 // ======================================
 
 function populateDropdowns(){
@@ -158,10 +157,7 @@ function populateDropdowns(){
 }
 
 // ======================================
-// DEPOSIT / WITHDRAW
-// Add this near populateDropdowns(), and call
-// populateDepositWithdrawDropdowns() inside loadAccounts()
-// right after populateDropdowns().
+// DROPDOWNS (Deposit / Withdraw form)
 // ======================================
 
 const depositAccount = document.getElementById("depositAccount");
@@ -189,82 +185,6 @@ function populateDepositWithdrawDropdowns(){
     });
 
 }
-
-depositForm.addEventListener("submit", async (e) => {
-
-    e.preventDefault();
-
-    const account_id = depositAccount.value;
-    const amount = Number(document.getElementById("depositAmount").value);
-
-    try{
-
-        const res = await fetch(`${API}/deposit`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                idempotency_key: generateKey(),
-                account_id,
-                amount
-            })
-        });
-
-        const data = await res.json();
-
-        if(!res.ok){
-            toast(data.error || "Deposit failed", "error");
-            return;
-        }
-
-        toast("Deposit successful");
-        depositForm.reset();
-        await loadAccounts();
-        await loadHistory(account_id);
-
-    } catch(err){
-        console.error(err);
-        toast("Server unavailable", "error");
-    }
-
-});
-
-withdrawForm.addEventListener("submit", async (e) => {
-
-    e.preventDefault();
-
-    const account_id = withdrawAccount.value;
-    const amount = Number(document.getElementById("withdrawAmount").value);
-
-    try{
-
-        const res = await fetch(`${API}/withdraw`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                idempotency_key: generateKey(),
-                account_id,
-                amount
-            })
-        });
-
-        const data = await res.json();
-
-        if(!res.ok){
-            toast(data.error || "Withdrawal failed", "error");
-            return;
-        }
-
-        toast("Withdrawal successful");
-        withdrawForm.reset();
-        await loadAccounts();
-        await loadHistory(account_id);
-
-    } catch(err){
-        console.error(err);
-        toast("Server unavailable", "error");
-    }
-
-});
 
 // ======================================
 // STATS
@@ -365,6 +285,44 @@ refreshBtn.onclick=async()=>{
 };
 
 // ======================================
+// CREATE ACCOUNT
+// ======================================
+
+const createAccountForm = document.getElementById("createAccountForm");
+
+createAccountForm.addEventListener("submit", async (e) => {
+
+    e.preventDefault();
+
+    const owner_name = document.getElementById("newAccountName").value.trim();
+
+    try{
+
+        const res = await fetch(`${API}/accounts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ owner_name })
+        });
+
+        const data = await res.json();
+
+        if(!res.ok){
+            toast(data.error || "Could not create account", "error");
+            return;
+        }
+
+        toast(`Account created for ${data.owner_name}`);
+        createAccountForm.reset();
+        await loadAccounts();
+
+    } catch(err){
+        console.error(err);
+        toast("Server unavailable", "error");
+    }
+
+});
+
+// ======================================
 // TRANSFER
 // ======================================
 
@@ -378,15 +336,10 @@ transferForm.addEventListener("submit", async (e) => {
 
     e.preventDefault();
 
-    // FIX: account IDs are UUIDs (text like "a5bb97d5-...."), NOT numbers.
-    // parseInt() was turning them into NaN -> null, which is why the
-    // backend kept rejecting every request as "missing required field".
-    // Just keep them as plain strings - no parseInt, no Number().
+    // Account IDs are UUIDs (text), NOT numbers - never parseInt() them.
     const sender = document.getElementById("fromAccount").value;
 
     const receiver = document.getElementById("toAccount").value;
-
-    console.log(sender, receiver);
 
     const amount = Number(document.getElementById("amount").value);
 
@@ -504,6 +457,86 @@ window.onclick=(e)=>{
     }
 
 };
+
+// ======================================
+// DEPOSIT / WITHDRAW
+// ======================================
+
+depositForm.addEventListener("submit", async (e) => {
+
+    e.preventDefault();
+
+    const account_id = depositAccount.value;
+    const amount = Number(document.getElementById("depositAmount").value);
+
+    try{
+
+        const res = await fetch(`${API}/deposit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idempotency_key: generateKey(),
+                account_id,
+                amount
+            })
+        });
+
+        const data = await res.json();
+
+        if(!res.ok){
+            toast(data.error || "Deposit failed", "error");
+            return;
+        }
+
+        toast("Deposit successful");
+        depositForm.reset();
+        await loadAccounts();
+        await loadHistory(account_id);
+
+    } catch(err){
+        console.error(err);
+        toast("Server unavailable", "error");
+    }
+
+});
+
+withdrawForm.addEventListener("submit", async (e) => {
+
+    e.preventDefault();
+
+    const account_id = withdrawAccount.value;
+    const amount = Number(document.getElementById("withdrawAmount").value);
+
+    try{
+
+        const res = await fetch(`${API}/withdraw`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idempotency_key: generateKey(),
+                account_id,
+                amount
+            })
+        });
+
+        const data = await res.json();
+
+        if(!res.ok){
+            toast(data.error || "Withdrawal failed", "error");
+            return;
+        }
+
+        toast("Withdrawal successful");
+        withdrawForm.reset();
+        await loadAccounts();
+        await loadHistory(account_id);
+
+    } catch(err){
+        console.error(err);
+        toast("Server unavailable", "error");
+    }
+
+});
 
 // ======================================
 // TOAST

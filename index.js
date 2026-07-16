@@ -110,6 +110,24 @@ app.get('/accounts', async (req, res) => {
 });
 
 // ============================================
+// POST /accounts
+// Creates a new account with a starting balance of ₹0.
+// Anyone using the live demo can create their own account this way,
+// instead of needing manual database access.
+// ============================================
+app.post('/accounts', async (req, res) => {
+  const { owner_name } = req.body;
+  if (!owner_name || !owner_name.trim()) {
+    return res.status(400).json({ error: 'Account name is required' });
+  }
+  const result = await pool.query(
+    'INSERT INTO accounts (owner_name) VALUES ($1) RETURNING id AS account_id, owner_name',
+    [owner_name.trim()]
+  );
+  res.status(201).json({ ...result.rows[0], balance: '0.00' });
+});
+
+// ============================================
 // GET /transactions
 // Lists the most recent transactions, with account names joined in
 // (instead of just raw UUIDs), so the frontend can show a readable history.
