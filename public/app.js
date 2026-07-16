@@ -3,7 +3,7 @@
 // app.js (Part 1)
 // ======================================
 
-const API = "http://localhost:3000";
+const API = "";
 
 let accounts = [];
 
