@@ -258,11 +258,21 @@
 
         <h2>Accounts</h2>
 
-        <button id="refreshBtn">
+        <div class="header-btns">
 
-            Refresh
+            <button id="refreshBtn">
 
-        </button>
+                Refresh
+
+            </button>
+
+            <button id="resetBtn">
+
+                Reset Demo
+
+            </button>
+
+        </div>
 
     </div>
 
@@ -481,6 +491,45 @@
                 Waiting for execution...
 
             </div>
+
+        </div>
+
+    </div>
+
+    <!-- Throughput Benchmark -->
+
+    <div class="panel">
+
+        <div class="panel-header">
+
+            <h2>Throughput Benchmark</h2>
+
+        </div>
+
+        <p class="panel-description">
+
+            Fires N transfers concurrently against the database directly
+            (no HTTP round-trip per request), reporting real tx/sec and
+            latency percentiles under lock contention.
+
+        </p>
+
+        <div class="benchmark-controls">
+
+            <select id="benchCount">
+                <option value="20">20 requests</option>
+                <option value="50" selected>50 requests</option>
+                <option value="100">100 requests</option>
+                <option value="500">500 requests</option>
+            </select>
+
+            <button id="benchBtn" class="secondary-btn">Run Benchmark</button>
+
+        </div>
+
+        <div id="benchResults" class="console-window">
+
+            <div class="console-line">No benchmark run yet.</div>
 
         </div>
 
