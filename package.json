@@ -1,10 +1,11 @@
 {
   "name": "ledger-wallet-system",
   "version": "1.0.0",
-  "description": "",
+  "description": "A backend-first ledger and wallet system demonstrating double-entry accounting, ACID transactions, row-level locking, and idempotent request handling.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "test": "jest --runInBand"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +13,11 @@
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.4.1",
     "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   }
 }
