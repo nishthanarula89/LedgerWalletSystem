@@ -14,6 +14,7 @@ const fromAccount = document.getElementById("fromAccount");
 const toAccount = document.getElementById("toAccount");
 
 const refreshBtn = document.getElementById("refreshBtn");
+const resetBtn = document.getElementById("resetBtn");
 
 const accountsCount = document.getElementById("accountsCount");
 const transactionCount = document.getElementById("transactionCount");
@@ -281,6 +282,50 @@ refreshBtn.onclick=async()=>{
     await loadAccounts();
 
     toast("Accounts refreshed");
+
+};
+
+// ======================================
+// RESET DEMO
+// ======================================
+
+resetBtn.onclick=async()=>{
+
+    const confirmed = window.confirm(
+        "This wipes every account, transaction, and ledger entry, then " +
+        "reseeds Alice, Bob, and Charlie with starting balances. Continue?"
+    );
+
+    if(!confirmed) return;
+
+    resetBtn.disabled = true;
+
+    try{
+
+        const res = await fetch(`${API}/reset`, { method: "POST" });
+        const data = await res.json();
+
+        if(!res.ok){
+            toast(data.error || "Reset failed", "error");
+            return;
+        }
+
+        duplicateCount.textContent = "0";
+        stressConsole.innerHTML = `<div class="console-line">Waiting for execution...</div>`;
+        progressBar.style.width = "0%";
+        benchResults.innerHTML = `<div class="console-line">No benchmark run yet.</div>`;
+        ledgerFeed.innerHTML = "";
+        transactionCount.textContent = "0";
+
+        toast("Demo reset to starting state");
+        await loadAccounts();
+
+    } catch(err){
+        console.error(err);
+        toast("Server unavailable", "error");
+    } finally {
+        resetBtn.disabled = false;
+    }
 
 };
 
@@ -622,6 +667,8 @@ async function runStressTransfer(sender,receiver,index){
 
     const key=generateKey();
 
+    const start=performance.now();
+
     try{
 
         const res=await fetch(`${API}/transfer`,{
@@ -646,6 +693,10 @@ async function runStressTransfer(sender,receiver,index){
 
         });
 
+        const latency=Math.round(performance.now()-start);
+
+        const time=new Date().toLocaleTimeString([],{hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"});
+
         const data=await res.json();
 
         const line=document.createElement("div");
@@ -656,7 +707,7 @@ async function runStressTransfer(sender,receiver,index){
 
             line.classList.add("console-success");
 
-            line.innerHTML=`✔ Request ${index+1} completed`;
+            line.innerHTML=`✔ Request ${index+1} · ${time} · ${latency}ms`;
 
         }
 
@@ -664,7 +715,7 @@ async function runStressTransfer(sender,receiver,index){
 
             line.classList.add("console-error");
 
-            line.innerHTML=`✖ Request ${index+1} failed`;
+            line.innerHTML=`✖ Request ${index+1} · ${time} · ${latency}ms · ${data.error||"failed"}`;
 
         }
 
@@ -687,6 +738,99 @@ async function runStressTransfer(sender,receiver,index){
     }
 
 }
+
+// ======================================
+// SERVER-SIDE THROUGHPUT BENCHMARK
+// Bypasses per-request HTTP round-trips: fires N concurrent transfers
+// directly against the DB layer on the server, so the tx/sec reported
+// reflects actual lock-contention throughput, not network latency.
+// ======================================
+
+const benchBtn=document.getElementById("benchBtn");
+const benchResults=document.getElementById("benchResults");
+const benchCount=document.getElementById("benchCount");
+
+benchBtn.onclick=async()=>{
+
+    if(accounts.length<2){
+
+        toast("Need at least 2 accounts","error");
+
+        return;
+
+    }
+
+    benchResults.innerHTML=`<div class="console-line">Running ${benchCount.value} concurrent transfers...</div>`;
+
+    benchBtn.disabled=true;
+
+    const sender=accounts[0].account_id;
+
+    const receiver=accounts[1].account_id;
+
+    const runStartedAt=new Date().toLocaleTimeString();
+
+    try{
+
+        const res=await fetch(`${API}/benchmark`,{
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+
+                from_account_id:sender,
+
+                to_account_id:receiver,
+
+                requests:Number(benchCount.value)
+
+            })
+
+        });
+
+        const data=await res.json();
+
+        if(!res.ok){
+
+            benchResults.innerHTML=`<div class="console-line console-error">✖ ${data.error||"Benchmark failed"}</div>`;
+
+            return;
+
+        }
+
+        benchResults.innerHTML=`
+
+            <div class="console-line">Run started at ${runStartedAt}</div>
+
+            <div class="console-line console-success">✔ ${data.succeeded} succeeded, ✖ ${data.failed} rejected</div>
+
+            <div class="console-line"><b>${data.requests_per_sec} tx/sec</b> · total ${data.total_time_ms}ms for ${data.total_requests} requests</div>
+
+            <div class="console-line">avg ${data.avg_latency_ms}ms · p50 ${data.p50_latency_ms}ms · p95 ${data.p95_latency_ms}ms · p99 ${data.p99_latency_ms}ms</div>
+
+        `;
+
+        toast(`${data.requests_per_sec} tx/sec`);
+
+        await loadAccounts();
+
+    } catch(err){
+
+        console.error(err);
+
+        benchResults.innerHTML=`<div class="console-line console-error">✖ Benchmark failed — server unavailable</div>`;
+
+    } finally{
+
+        benchBtn.disabled=false;
+
+    }
+
+};
 
 // ======================================
 // KEYBOARD SHORTCUT
