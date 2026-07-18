@@ -16,7 +16,7 @@ Most student backend projects are CRUD apps with a `balance` field that gets ove
 1. **Concurrent requests** — two simultaneous transfers from the same account can both read the same "before" balance and approve, causing an overdraft that shouldn't be possible.
 2. **Retries** — a client retrying a failed request (bad network, double-click) can cause the same payment to be processed twice.
 
-This system is built to survive both, and includes a load test proving it.
+This system is built to survive both, and includes a load test — and an automated test suite — proving it.
 
 ## Core design decisions
 
@@ -28,9 +28,20 @@ This system is built to survive both, and includes a load test proving it.
 
 **Row-level locking.** Before checking a sender's balance, the system runs `SELECT ... FOR UPDATE` on that account row, forcing concurrent requests against the same account to queue instead of racing. This is what prevents overdrafts under simultaneous load.
 
+**Input validation before the DB layer.** Amounts are validated (positive, finite, ≤2 decimal places, sane upper bound) and account IDs are checked before touching Postgres, so bad input returns a clean `400`/`404` instead of a raw `500` from a tripped constraint.
+
+## Scope decisions (deliberate, not oversights)
+
+- **No authentication.** Any caller can transfer between any two account IDs. This is intentional for a public, resettable demo — a production version would add auth + authorization on top of this same ledger core.
+- **Rate limits are demo-tuned, not production-tuned.** General routes allow 300 requests/min per IP so the in-UI stress test and benchmark aren't rate-limited into uselessness. `/reset` is capped tighter (5/min) since it's destructive.
+- **Amounts are stored as `NUMERIC(14,2)`**, validated at the API boundary to reject anything with more than 2 decimal places. A production system handling real currency would represent amounts as integer minor units (paise/cents) end-to-end to avoid floating-point ambiguity entirely.
+
 ## Proof, not just claims
 
-A live "Concurrency Stress Test" button in the UI fires 20 simultaneous transfer requests from a single account and reports how many succeeded vs. were correctly rejected for insufficient balance — demonstrating the locking holds under real concurrent load, not just in theory.
+- A **Concurrency Stress Test** panel fires 20 simultaneous transfer requests from one account and shows a live console with the timestamp and latency of each request, reporting how many succeeded vs. were correctly rejected for insufficient balance.
+- A **Throughput Benchmark** panel fires 20–500 transfers concurrently *at the database layer directly* (no per-request HTTP round-trip), reporting real tx/sec and p50/p95/p99 latency under lock contention — the number that actually reflects system throughput, not browser network conditions.
+- An automated **Jest + Supertest suite** (`npm test`) asserts the same guarantees in CI-style form: e.g. 20 concurrent transfers of ₹1 against a ₹15 balance produce exactly 15 successes and 5 clean rejections, and a replayed idempotency key never double-processes a transfer.
+- A **Reset Demo** button wipes all accounts/transactions/ledger entries and reseeds three demo accounts, so anyone using the live demo can put it back to a clean state without database access.
 
 ## API Endpoints
 
@@ -38,13 +49,16 @@ A live "Concurrency Stress Test" button in the UI fires 20 simultaneous transfer
 |---|---|---|
 | `GET` | `/accounts` | List all accounts with live-calculated balances |
 | `POST` | `/accounts` | Create a new account |
-| `GET` | `/accounts/:id/history` | Ledger entries (debit/credit) for one account |
-| `GET` | `/transactions` | Recent transactions across all accounts |
+| `GET` | `/accounts/:id/history` | Ledger entries for one account (`?limit=&offset=`, default 20, max 100) |
+| `GET` | `/accounts/:id/balance` | Live-calculated balance for one account |
+| `GET` | `/transactions` | Recent transactions across all accounts (`?limit=&offset=`) |
 | `POST` | `/transfer` | Transfer funds between two accounts |
 | `POST` | `/deposit` | Add funds to an account (from the External account) |
 | `POST` | `/withdraw` | Remove funds from an account (to the External account) |
+| `POST` | `/benchmark` | Run N concurrent transfers server-side; returns tx/sec + latency percentiles |
+| `POST` | `/reset` | Wipe all data and reseed 3 demo accounts (rate limited to 5/min) |
 
-All write endpoints (`/transfer`, `/deposit`, `/withdraw`) require an `idempotency_key` in the request body.
+All write endpoints (`/transfer`, `/deposit`, `/withdraw`) require an `idempotency_key` in the request body, validate `amount` server-side, and return a `duration_ms` field showing DB-side processing time for that request.
 
 ## Running it locally
 
@@ -69,10 +83,18 @@ DB_HOST=localhost
 DB_PORT=5432
 
 # 5. Run the server
-node index.js
+npm start
 ```
 
 Then open `http://localhost:3000`.
+
+## Running the tests
+
+```bash
+npm test
+```
+
+Runs against the same Postgres database configured via your `.env` (or `DATABASE_URL`) — with `schema.sql` already applied. Tests create their own uniquely-named accounts per run, so they're safe to run against a live/demo database repeatedly.
 
 ## Deployment
 
@@ -80,6 +102,7 @@ Deployed on Render as a single Web Service (Express serves both the API and the 
 
 ## What's next
 
-- Throughput benchmarking (requests/sec under load, using a tool like `autocannon`)
-- Additional test coverage for the transfer/deposit/withdraw logic
-- Rate limiting and input validation hardening 
+- Authentication + per-user authorization on top of the existing ledger core
+- Integer minor-unit (paise) representation for amounts, end-to-end
+- A `pending`/`failed` transaction status lifecycle instead of everything landing as `completed`
+- Cursor-based pagination for very large transaction histories
