@@ -21,6 +21,8 @@ const transactionCount = document.getElementById("transactionCount");
 const moneyProcessed = document.getElementById("moneyProcessed");
 const duplicateCount = document.getElementById("duplicateCount");
 
+const transactionsTable = document.getElementById("transactionsTable");
+
 // ======================================
 // START APP
 // ======================================
@@ -36,6 +38,8 @@ window.addEventListener("load", async () => {
     },1800);
 
     await loadAccounts();
+
+    await loadTransactions();
 
 });
 
@@ -118,6 +122,70 @@ function renderAccounts(){
         accountsContainer.appendChild(card);
 
     });
+
+}
+
+// ======================================
+// RECENT TRANSACTIONS TABLE
+// ======================================
+
+async function loadTransactions(){
+
+    try{
+
+        const res = await fetch(`${API}/transactions?limit=20`);
+        const data = await res.json();
+
+        transactionCount.textContent = data.total;
+
+        transactionsTable.innerHTML = "";
+
+        data.data.forEach(tx=>{
+
+            const row = document.createElement("tr");
+
+            const statusClass =
+                tx.status === "completed" ? "status-success" :
+                tx.status === "failed" ? "status-failed" :
+                "status-replay";
+
+            row.innerHTML = `
+
+                <td>${tx.id.slice(0,8)}</td>
+
+                <td>${tx.from_name}</td>
+
+                <td>${tx.to_name}</td>
+
+                <td>₹${Number(tx.amount).toLocaleString()}</td>
+
+                <td><span class="status ${statusClass}">${tx.status}</span></td>
+
+                <td>${new Date(tx.created_at).toLocaleString()}</td>
+
+            `;
+
+            transactionsTable.appendChild(row);
+
+        });
+
+        if(data.data.length === 0){
+
+            transactionsTable.innerHTML = `
+                <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">
+                    No transactions yet.
+                </td></tr>
+            `;
+
+        }
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+    }
 
 }
 
@@ -219,8 +287,6 @@ async function loadHistory(id){
 
     ledgerFeed.innerHTML="";
 
-    transactionCount.textContent=data.length;
-
     data.forEach(tx=>{
 
         const item=document.createElement("div");
@@ -281,6 +347,8 @@ refreshBtn.onclick=async()=>{
 
     await loadAccounts();
 
+    await loadTransactions();
+
     toast("Accounts refreshed");
 
 };
@@ -319,6 +387,7 @@ resetBtn.onclick=async()=>{
 
         toast("Demo reset to starting state");
         await loadAccounts();
+        await loadTransactions();
 
     } catch(err){
         console.error(err);
@@ -473,6 +542,8 @@ transferForm.addEventListener("submit", async (e) => {
 
         await loadHistory(sender);
 
+        await loadTransactions();
+
         toast("Transfer successful");
 
     }
@@ -537,6 +608,7 @@ depositForm.addEventListener("submit", async (e) => {
         depositForm.reset();
         await loadAccounts();
         await loadHistory(account_id);
+        await loadTransactions();
 
     } catch(err){
         console.error(err);
@@ -575,6 +647,7 @@ withdrawForm.addEventListener("submit", async (e) => {
         withdrawForm.reset();
         await loadAccounts();
         await loadHistory(account_id);
+        await loadTransactions();
 
     } catch(err){
         console.error(err);
@@ -660,6 +733,8 @@ stressBtn.onclick=async()=>{
     await loadAccounts();
 
     await loadHistory(sender);
+
+    await loadTransactions();
 
 };
 
@@ -818,6 +893,8 @@ benchBtn.onclick=async()=>{
 
         await loadAccounts();
 
+        await loadTransactions();
+
     } catch(err){
 
         console.error(err);
@@ -844,6 +921,8 @@ document.addEventListener("keydown",(e)=>{
 
         loadAccounts();
 
+        loadTransactions();
+
         toast("Dashboard refreshed");
 
     }
@@ -857,5 +936,7 @@ document.addEventListener("keydown",(e)=>{
 setInterval(()=>{
 
     loadAccounts();
+
+    loadTransactions();
 
 },30000);
